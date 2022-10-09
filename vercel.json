@@ -1,9 +1,6 @@
 {
     "version": 2,
-    "name": "code-spot-server",
-    "builds": [
-       { "src": "server/src/server.js", "use": "@vercel/node" }
-    ],
+    "name": "code-spot-server",    
     "routes": [
        { "src": "/(.*)", "dest": "/server/src/server.js" }
     ]
