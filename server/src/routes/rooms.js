@@ -7,7 +7,8 @@ const { v4: uuidv4 } = require('uuid');
 let siteId = 1;
 
 // GET: api/Room/GetPeerIdsInRoom?roomName=abc
-roomsRoutes.route("/api/Room/GetPeerIdsInRoom").get(async function(req, res) {
+roomsRoutes.route("/api/Room/GetPeerIdsInRoom").get(async function (req, res) {
+    await dbConnection();
     const roomName = req.query.roomName;
     const isRoomExist = await roomExist(roomName);
 
@@ -19,14 +20,15 @@ roomsRoutes.route("/api/Room/GetPeerIdsInRoom").get(async function(req, res) {
     const query = { roomName };
     const peers = await db_connect
         .collection("peers").find(query).toArray();
-    
+
     const peerIds = peers.map(peer => peer.peerId);
 
     res.json({ peerIds });
 });
 
 // GET: api/Room/JoinNewRoom?peerId=abc
-roomsRoutes.route("/api/Room/JoinNewRoom").get(async function(req, res) {
+roomsRoutes.route("/api/Room/JoinNewRoom").get(async function (req, res) {
+    await dbConnection();
     const peerId = req.query.peerId;
     const roomName = await generateRoomName();
     const cursorColor = getRandom(1, 25) + 1;
@@ -53,7 +55,8 @@ roomsRoutes.route("/api/Room/JoinNewRoom").get(async function(req, res) {
 });
 
 // Get: api/Room/JoinExistingRoom?peerId=abc&roomName=def
-roomsRoutes.route("/api/Room/JoinExistingRoom").get(async function(req, res) {
+roomsRoutes.route("/api/Room/JoinExistingRoom").get(async function (req, res) {
+    await dbConnection();
     const peerId = req.query.peerId;
     const roomName = req.query.roomName;
     const isRoomExist = await roomExist(roomName);
@@ -67,7 +70,7 @@ roomsRoutes.route("/api/Room/JoinExistingRoom").get(async function(req, res) {
             hasReceivedAllMessages: null,
             cursorColors: null,
         };
-    
+
         return res.json(info);
     }
 
@@ -80,7 +83,7 @@ roomsRoutes.route("/api/Room/JoinExistingRoom").get(async function(req, res) {
     const cursorColorList = peers.map(peer => peer.cursorColor);
 
     const randomColor = getAvailableCursorColor(roomName);
-    await db_connect.collection("rooms").insertOne({ 
+    await db_connect.collection("rooms").insertOne({
         peerId,
         roomName,
         hasReceivedAllMessages: 0,
@@ -99,7 +102,8 @@ roomsRoutes.route("/api/Room/JoinExistingRoom").get(async function(req, res) {
 });
 
 // Post: api/Room/MarkPeerReceivedAllMessages
-roomsRoutes.route("/api/Room/MarkPeerReceivedAllMessages").post(async function(req, res) {
+roomsRoutes.route("/api/Room/MarkPeerReceivedAllMessages").post(async function (req, res) {
+    await dbConnection();
     const peerId = req.body.Val;
     let db_connect = dbo.getDb();
     const query = { peerId };
@@ -114,13 +118,14 @@ roomsRoutes.route("/api/Room/MarkPeerReceivedAllMessages").post(async function(r
 });
 
 // Delete: api/Room/DeletePeer/abc
-roomsRoutes.route("/api/Room/DeletePeer/:peerId").post(async function(req, res) {
+roomsRoutes.route("/api/Room/DeletePeer/:peerId").post(async function (req, res) {
+    await dbConnection();
     const peerId = req.params.peerId;
     let db_connect = dbo.getDb();
     let query = { peerId };
     const peer = await db_connect
         .collection("peers").findOne(query);
-    
+
     if (peer === null) {
         return res.json({});
     }
@@ -145,19 +150,18 @@ async function roomExist(roomName) {
 
     const room = await db_connect
         .collection("rooms").findOne(query);
-    
+
     return room !== null;
 }
 
-async function generateRoomName()
-{
+async function generateRoomName() {
     const randomName = uuidv4();
 
     let db_connect = dbo.getDb();
     const query = { roomName: randomName };
     const room = await db_connect
         .collection("rooms").findOne(query);
-    
+
     if (room === null) {
         return randomName;
     }
@@ -173,11 +177,11 @@ async function getAvailableCursorColor(roomName) {
     if (cursorColorList.Count >= 25) {
         return randomColor;
     }
-                
+
     while (cursorColorList.includes(randomColor)) {
         randomColor = getRandom(1, 25) + 1;
     }
-    
+
     return randomColor;
 }
 
@@ -185,4 +189,11 @@ function getRandom(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+async function dbConnection() {
+    await dbo.connectToServer(async function (err) {
+        if (err) {
+            console.log(err);
+        }
+    });
+}
 module.exports = roomsRoutes;
